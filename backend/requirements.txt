@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlmodel
+pydantic-settings
+edge-tts
+google-generativeai
+python-multipart
+ebooklib
+beautifulsoup4

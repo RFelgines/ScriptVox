@@ -1,0 +1,5 @@
+# Heavy dependencies for LOCAL / PROD mode
+# torch
+# TTS  # Coqui TTS
+# langchain
+# langchain-community
