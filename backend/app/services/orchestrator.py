@@ -11,7 +11,7 @@ class Orchestrator:
     def __init__(self):
         self.parser = EbookParser()
 
-    async def process_upload(self, file: UploadFile, background_tasks: BackgroundTasks) -> Book:
+    async def process_upload(self, file: UploadFile) -> tuple[Book, str]:
         # 1. Save file
         file_path = os.path.join(self.parser.upload_dir, file.filename)
         with open(file_path, "wb") as buffer:
@@ -24,10 +24,60 @@ class Orchestrator:
             session.commit()
             session.refresh(book)
             
-            # 3. Queue Parsing Task
-            background_tasks.add_task(self._parse_and_save, book.id, file_path)
+            # 3. Queue Pipeline Task
+            # We don't queue parse here anymore if we are using the new pipeline methods
+            # But for backward compatibility or simple upload, we might.
+            # actually, let's make process_upload JUST save the file and DB record.
+            # The caller will decide what to do next.
+            
+            return book, file_path
             
             return book
+
+    async def process_upload_and_analyze(self, file: UploadFile, background_tasks: BackgroundTasks, llm_service) -> Book:
+        book, file_path = await self.process_upload(file)
+        # Chain analysis only (tts_service=None)
+        background_tasks.add_task(self._run_pipeline, book.id, file_path, llm_service, None)
+        return book
+
+    async def process_upload_and_generate(self, file: UploadFile, background_tasks: BackgroundTasks, llm_service, tts_service) -> Book:
+        book, file_path = await self.process_upload(file)
+        # Chain full process
+        background_tasks.add_task(self._run_pipeline, book.id, file_path, llm_service, tts_service)
+        return book
+
+    async def _chain_analyze(self, book_id: int, llm_service):
+        # This is kept for compatibility if needed, but we should use _run_pipeline
+        pass
+
+    async def _chain_analyze(self, book_id: int, llm_service):
+        # Wait for parsing to complete (this is tricky with async background tasks, 
+        # but since _parse_and_save is synchronous in the background task queue, 
+        # we might need to poll or restructure. 
+        # BETTER APPROACH: Call parse directly here instead of backgrounding it twice.
+        
+        # We need to re-implement the flow to be sequential in the background task
+        pass # Replaced by logic below
+
+    async def _run_pipeline(self, book_id: int, file_path: str, llm_service, tts_service=None):
+        print(f"Starting pipeline for book {book_id}")
+        
+        # 1. Parse
+        self._parse_and_save(book_id, file_path)
+        
+        # 2. Analyze
+        await self.analyze_book(book_id, llm_service)
+        
+        # 3. If TTS service provided, continue to generation
+        if tts_service:
+            print(f"Auto-generating audio for book {book_id}")
+            with Session(engine) as session:
+                chapters = session.exec(select(Chapter).where(Chapter.book_id == book_id)).all()
+                for chapter in chapters:
+                    # Segment first
+                    await self.segment_chapter(chapter.id, llm_service)
+                    # Then Generate
+                    await self.generate_audio(chapter.id, tts_service)
 
     def _parse_and_save(self, book_id: int, file_path: str):
         with Session(engine) as session:

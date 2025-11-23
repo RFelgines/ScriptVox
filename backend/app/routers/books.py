@@ -6,6 +6,7 @@ import os
 from ..core.database import get_session
 from ..models.models import Book, Chapter, Character
 from ..services.orchestrator import Orchestrator
+from ..main import get_llm_service, get_tts_service
 
 router = APIRouter(prefix="/books", tags=["books"])
 orchestrator = Orchestrator()
@@ -14,11 +15,17 @@ orchestrator = Orchestrator()
 async def upload_book(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    auto_process: bool = False,
+    llm_service = Depends(get_llm_service),
+    tts_service = Depends(get_tts_service)
 ):
     if not file.filename.endswith(".epub"):
         raise HTTPException(status_code=400, detail="Only .epub files are supported")
     
-    return await orchestrator.process_upload(file, background_tasks)
+    if auto_process:
+        return await orchestrator.process_upload_and_generate(file, background_tasks, llm_service, tts_service)
+    else:
+        return await orchestrator.process_upload_and_analyze(file, background_tasks, llm_service)
 
 @router.post("/{book_id}/cover", response_model=Book)
 async def upload_cover(
@@ -81,3 +88,26 @@ def get_chapter_segments(chapter_id: int, session: Session = Depends(get_session
     from ..models.models import Segment
     segments = session.exec(select(Segment).where(Segment.chapter_id == chapter_id).order_by(Segment.id)).all()
     return segments
+
+@router.delete("/{book_id}")
+async def delete_book(book_id: int, session: Session = Depends(get_session)):
+    book = session.get(Book, book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    # Delete files
+    # 1. Audio directory
+    audio_dir = f"../data/audio/book_{book_id}"
+    if os.path.exists(audio_dir):
+        shutil.rmtree(audio_dir)
+        
+    # 2. Cover image (if it exists and is not a default/shared one)
+    # Be careful not to delete shared assets if any. 
+    # For now, assuming covers are unique per book or we just leave them to avoid risk.
+    # Let's delete if it's in the uploads folder specifically for this book?
+    # The cover_path is usually "data/covers/uuid.jpg". 
+    # Let's just delete the DB record for now, file cleanup is secondary/risky without strict paths.
+    
+    session.delete(book)
+    session.commit()
+    return {"message": "Book deleted successfully"}

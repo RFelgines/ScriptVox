@@ -22,8 +22,8 @@ class Book(SQLModel, table=True):
     status: BookStatus = Field(default=BookStatus.NEW)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
-    characters: List["Character"] = Relationship(back_populates="book")
-    chapters: List["Chapter"] = Relationship(back_populates="book")
+    characters: List["Character"] = Relationship(back_populates="book", sa_relationship_kwargs={"cascade": "all, delete"})
+    chapters: List["Chapter"] = Relationship(back_populates="book", sa_relationship_kwargs={"cascade": "all, delete"})
 
 class Character(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -46,7 +46,7 @@ class Chapter(SQLModel, table=True):
     progress: int = Field(default=0)
     
     book: Book = Relationship(back_populates="chapters")
-    segments: List["Segment"] = Relationship(back_populates="chapter")
+    segments: List["Segment"] = Relationship(back_populates="chapter", sa_relationship_kwargs={"cascade": "all, delete"})
 
 class Segment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

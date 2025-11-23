@@ -59,12 +59,13 @@ def get_llm_service() -> BaseLLM:
     return container.llm_service
 
 # Register Routers
-from .routers import books, generation
+from .routers import books, generation, characters
 app.include_router(books.router)
 app.include_router(generation.router)
+app.include_router(characters.router)
 
 # Mount static files for serving covers and audio
-app.mount("/data", StaticFiles(directory="data"), name="data")
+app.mount("/data", StaticFiles(directory="../data"), name="data")
 
 @app.get("/")
 def read_root():
