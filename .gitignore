@@ -15,6 +15,12 @@ build/
 *.db
 *.sqlite3
 backend/data/*.db
+data/*.db
+
+# Local Data (Generated & Uploads)
+data/audio/
+data/uploads/
+data/covers/
 
 # OS
 .DS_Store
