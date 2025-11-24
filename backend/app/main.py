@@ -65,7 +65,7 @@ app.include_router(generation.router)
 app.include_router(characters.router)
 
 # Mount static files for serving covers and audio
-app.mount("/data", StaticFiles(directory="../data"), name="data")
+app.mount("/data", StaticFiles(directory="data"), name="data")
 
 @app.get("/")
 def read_root():
@@ -74,4 +74,4 @@ def read_root():
 @app.get("/voices")
 async def get_voices(tts: BaseTTS = Depends(get_tts_service)):
     voices = await tts.list_voices()
-    return {"count": len(voices), "voices": voices[:5]}
+    return {"count": len(voices), "voices": voices}

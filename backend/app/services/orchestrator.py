@@ -263,6 +263,11 @@ class Orchestrator:
             
             # Fetch characters and convert to dicts to avoid DetachedInstanceError
             characters = session.exec(select(Character).where(Character.book_id == book_id)).all()
+            
+            # Find Narrator ID
+            narrator = next((c for c in characters if c.name == "Narrator"), None)
+            narrator_id = narrator.id if narrator else None
+            
             character_map = {
                 c.id: {"assigned_voice_id": c.assigned_voice_id, "gender": c.gender} 
                 for c in characters
@@ -272,6 +277,7 @@ class Orchestrator:
 
         print(f"Generating audio for chapter {chapter_id} ({len(segments_data)} segments)...")
         
+        # Use forward slashes for web compatibility
         chapter_audio_dir = f"data/audio/book_{book_id}/chapter_{chapter_position}"
         os.makedirs(chapter_audio_dir, exist_ok=True)
         
@@ -279,8 +285,13 @@ class Orchestrator:
             # Use French voice by default
             voice_id = "fr-FR-DeniseNeural"  # Female French voice
             
-            if segment_data["speaker_id"]:
-                char_data = character_map.get(segment_data["speaker_id"])
+            # Determine effective speaker ID (use Narrator if None)
+            speaker_id = segment_data["speaker_id"]
+            if speaker_id is None and narrator_id:
+                speaker_id = narrator_id
+            
+            if speaker_id:
+                char_data = character_map.get(speaker_id)
                 if char_data:
                     if char_data["assigned_voice_id"]:
                         voice_id = char_data["assigned_voice_id"]
@@ -305,7 +316,8 @@ class Orchestrator:
                 with Session(engine) as update_session:
                     segment = update_session.get(Segment, segment_data["id"])
                     if segment:
-                        segment.audio_file = output_path
+                        # Convert backslashes to forward slashes for web URLs
+                        segment.audio_file = output_path.replace('\\', '/')
                         update_session.add(segment)
                     
                     # Update chapter progress

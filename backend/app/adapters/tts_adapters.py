@@ -7,7 +7,12 @@ class EdgeTTSAdapter(BaseTTS):
     async def list_voices(self) -> List[Dict[str, str]]:
         voices = await edge_tts.list_voices()
         return [
-            {"id": v["ShortName"], "name": v["FriendlyName"], "gender": v["Gender"]}
+            {
+                "ShortName": v["ShortName"], 
+                "Gender": v["Gender"], 
+                "Locale": v["Locale"],
+                "FriendlyName": v["FriendlyName"]
+            }
             for v in voices
         ]
 
