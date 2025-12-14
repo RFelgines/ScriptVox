@@ -116,6 +116,10 @@ class Orchestrator:
                 session.commit()
 
     async def analyze_book(self, book_id: int, llm_service):
+        from .voice_registry import VoiceRegistry
+        
+        voice_registry = VoiceRegistry()
+        
         with Session(engine) as session:
             book = session.get(Book, book_id)
             if not book:
@@ -138,26 +142,62 @@ class Orchestrator:
                 if "narrator" in char_data["name"].lower():
                     narrator_exists = True
                 
+                # Extract new fields with fallbacks
+                gender = char_data.get("gender", "neutral")
+                age_category = char_data.get("age_category", "adult")
+                tone = char_data.get("tone", "neutral")
+                voice_quality = char_data.get("voice_quality", "calm")
+                description = char_data.get("description", "")
+                
+                # Automatically assign best matching voice
+                assigned_voice = voice_registry.find_best_match(
+                    gender=gender,
+                    age_category=age_category,
+                    tone=tone,
+                    voice_quality=voice_quality,
+                    locale="fr-FR"  # TODO: Detect from book metadata
+                )
+                
+                print(f"Auto-assigned voice {assigned_voice} to {char_data['name']} "
+                      f"(gender={gender}, age={age_category}, tone={tone}, quality={voice_quality})")
+                
                 character = Character(
                     book_id=book.id,
                     name=char_data["name"],
-                    gender=char_data["gender"],
-                    description=char_data["description"]
+                    gender=gender,
+                    age_category=age_category,
+                    tone=tone,
+                    voice_quality=voice_quality,
+                    description=description,
+                    assigned_voice_id=assigned_voice
                 )
                 session.add(character)
             
             if not narrator_exists:
+                # Create narrator with neutral characteristics and auto-assign voice
+                narrator_voice = voice_registry.find_best_match(
+                    gender="neutral",
+                    age_category="adult",
+                    tone="warm",
+                    voice_quality="calm",
+                    locale="fr-FR"
+                )
+                
                 session.add(Character(
                     book_id=book.id,
                     name="Narrator",
                     gender="neutral",
-                    description="Standard narrator voice"
+                    age_category="adult",
+                    tone="warm",
+                    voice_quality="calm",
+                    description="Standard narrator voice",
+                    assigned_voice_id=narrator_voice
                 ))
             
             book.status = BookStatus.READY
             session.add(book)
             session.commit()
-            print(f"Analysis complete for book {book_id}. Found {len(characters_data)} characters.")
+            print(f"Analysis complete for book {book_id}. Found {len(characters_data)} characters with auto-assigned voices.")
 
     async def segment_chapter(self, chapter_id: int, llm_service):
         print(f"[DEBUG] segment_chapter called for chapter_id={chapter_id}")
@@ -272,6 +312,9 @@ class Orchestrator:
                 c.id: {"assigned_voice_id": c.assigned_voice_id, "gender": c.gender} 
                 for c in characters
             }
+            
+            print(f"[VOICE DEBUG] Character map: {character_map}")
+            print(f"[VOICE DEBUG] Narrator ID: {narrator_id}")
 
         # Session is now closed. We have all data in memory.
 
@@ -287,19 +330,31 @@ class Orchestrator:
             
             # Determine effective speaker ID (use Narrator if None)
             speaker_id = segment_data["speaker_id"]
+            
+            print(f"[VOICE DEBUG] Segment {i}: speaker_id={speaker_id}, narrator_id={narrator_id}")
+            
             if speaker_id is None and narrator_id:
                 speaker_id = narrator_id
+                print(f"[VOICE DEBUG] Segment {i}: Using narrator_id as speaker")
             
             if speaker_id:
                 char_data = character_map.get(speaker_id)
+                print(f"[VOICE DEBUG] Segment {i}: char_data={char_data}")
+                
                 if char_data:
                     if char_data["assigned_voice_id"]:
                         voice_id = char_data["assigned_voice_id"]
+                        print(f"[VOICE DEBUG] Segment {i}: Using assigned voice: {voice_id}")
                     elif char_data["gender"]:
                         if char_data["gender"].lower() == "female":
                             voice_id = "fr-FR-DeniseNeural"
                         elif char_data["gender"].lower() == "male":
                             voice_id = "fr-FR-HenriNeural"
+                        print(f"[VOICE DEBUG] Segment {i}: Using gender fallback: {voice_id}")
+                else:
+                    print(f"[VOICE DEBUG] Segment {i}: No character data found for speaker_id={speaker_id}")
+            else:
+                print(f"[VOICE DEBUG] Segment {i}: No speaker_id, using default: {voice_id}")
             
             filename = f"segment_{i:04d}.mp3"
             output_path = os.path.join(chapter_audio_dir, filename)

@@ -14,13 +14,21 @@ class GeminiLLMAdapter(BaseLLM):
         Analyze the following text from a book chapter. 
         Identify the Narrator (if distinct) and all unique characters who speak or are mentioned significantly.
         
+        For each character, determine:
+        - Their likely age category: "child" (0-12), "teen" (13-19), "young" (20-35), "adult" (36-60), or "old" (60+)
+        - Their voice tone: describe the tone (e.g., "deep", "high", "soft", "rough", "warm", "cold")
+        - Their voice quality: describe the emotional quality (e.g., "energetic", "calm", "ominous", "cheerful", "authoritative")
+        
         Return the result strictly as a JSON object with this structure:
         {
             "characters": [
                 {
                     "name": "Character Name",
                     "gender": "male" or "female" or "neutral",
-                    "description": "Short description of voice tone and personality"
+                    "age_category": "child" or "teen" or "young" or "adult" or "old",
+                    "tone": "Brief description of voice tone",
+                    "voice_quality": "Brief description of voice quality/emotion",
+                    "description": "Short description of personality and role in the story"
                 }
             ]
         }
@@ -124,13 +132,21 @@ class OllamaLLMAdapter(BaseLLM):
 Analyze the following text from a book chapter. 
 Identify the Narrator (if distinct) and all unique characters who speak or are mentioned significantly.
 
+For each character, determine:
+- Their likely age category: "child" (0-12), "teen" (13-19), "young" (20-35), "adult" (36-60), or "old" (60+)
+- Their voice tone: describe the tone (e.g., "deep", "high", "soft", "rough", "warm", "cold")
+- Their voice quality: describe the emotional quality (e.g., "energetic", "calm", "ominous", "cheerful", "authoritative")
+
 Return the result strictly as a JSON object with this structure:
 {{
     "characters": [
         {{
             "name": "Character Name",
             "gender": "male" or "female" or "neutral",
-            "description": "Short description of voice tone and personality"
+            "age_category": "child" or "teen" or "young" or "adult" or "old",
+            "tone": "Brief description of voice tone",
+            "voice_quality": "Brief description of voice quality/emotion",
+            "description": "Short description of personality and role in the story"
         }}
     ]
 }}

@@ -17,8 +17,16 @@ class EdgeTTSAdapter(BaseTTS):
         ]
 
     async def generate_audio(self, text: str, voice_id: str, output_path: str) -> str:
+        print(f"[TTS DEBUG] Generating audio:")
+        print(f"[TTS DEBUG]   Voice: {voice_id}")
+        print(f"[TTS DEBUG]   Text length: {len(text)} chars")
+        print(f"[TTS DEBUG]   Text preview: {text[:100]}...")
+        print(f"[TTS DEBUG]   Output: {output_path}")
+        
         communicate = edge_tts.Communicate(text, voice_id)
         await communicate.save(output_path)
+        
+        print(f"[TTS DEBUG] Audio saved to {output_path}")
         return output_path
 
 class XTTSAdapter(BaseTTS):

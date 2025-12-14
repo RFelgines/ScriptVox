@@ -97,7 +97,7 @@ async def delete_book(book_id: int, session: Session = Depends(get_session)):
     
     # Delete files
     # 1. Audio directory
-    audio_dir = f"../data/audio/book_{book_id}"
+    audio_dir = f"data/audio/book_{book_id}"
     if os.path.exists(audio_dir):
         shutil.rmtree(audio_dir)
         
