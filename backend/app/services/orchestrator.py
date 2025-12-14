@@ -31,8 +31,6 @@ class Orchestrator:
             # The caller will decide what to do next.
             
             return book, file_path
-            
-            return book
 
     async def process_upload_and_analyze(self, file: UploadFile, background_tasks: BackgroundTasks, llm_service) -> Book:
         book, file_path = await self.process_upload(file)
@@ -46,18 +44,7 @@ class Orchestrator:
         background_tasks.add_task(self._run_pipeline, book.id, file_path, llm_service, tts_service)
         return book
 
-    async def _chain_analyze(self, book_id: int, llm_service):
-        # This is kept for compatibility if needed, but we should use _run_pipeline
-        pass
 
-    async def _chain_analyze(self, book_id: int, llm_service):
-        # Wait for parsing to complete (this is tricky with async background tasks, 
-        # but since _parse_and_save is synchronous in the background task queue, 
-        # we might need to poll or restructure. 
-        # BETTER APPROACH: Call parse directly here instead of backgrounding it twice.
-        
-        # We need to re-implement the flow to be sequential in the background task
-        pass # Replaced by logic below
 
     async def _run_pipeline(self, book_id: int, file_path: str, llm_service, tts_service=None):
         print(f"Starting pipeline for book {book_id}")

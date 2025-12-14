@@ -80,8 +80,14 @@ def get_book_chapters(book_id: int, session: Session = Depends(get_session)):
 
 @router.get("/{book_id}/characters", response_model=List[Character])
 def get_book_characters(book_id: int, session: Session = Depends(get_session)):
-    characters = session.exec(select(Character).where(Character.book_id == book_id)).all()
-    return characters
+    try:
+        characters = session.exec(select(Character).where(Character.book_id == book_id)).all()
+        return characters
+    except Exception as e:
+        print(f"ERROR querying characters: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/chapters/{chapter_id}/segments", response_model=List[dict])
 def get_chapter_segments(chapter_id: int, session: Session = Depends(get_session)):

@@ -6,9 +6,7 @@ connect_args = {"check_same_thread": False}
 engine = create_engine(
     settings.DATABASE_URL, 
     echo=True, 
-    connect_args=connect_args,
-    pool_size=20,
-    max_overflow=10
+    connect_args=connect_args
 )
 
 def create_db_and_tables():
