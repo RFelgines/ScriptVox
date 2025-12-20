@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Library, Upload, Settings, Mic2 } from 'lucide-react';
+import { Home, Library, Settings, Mic2 } from 'lucide-react';
 
 export default function Sidebar() {
     const pathname = usePathname();
@@ -11,7 +11,6 @@ export default function Sidebar() {
         { name: 'Home', href: '/', icon: Home },
         { name: 'Library', href: '/books', icon: Library },
         { name: 'Voices', href: '/voices', icon: Mic2 },
-        { name: 'Upload', href: '/upload', icon: Upload },
         { name: 'Settings', href: '/settings', icon: Settings },
     ];
 
