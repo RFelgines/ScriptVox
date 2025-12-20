@@ -59,30 +59,31 @@ class GeminiLLMAdapter(BaseLLM):
         # Format character list for the prompt
         char_list_str = ", ".join([f"{c['name']} ({c['gender']})" for c in characters])
         
-        prompt = f"""
-        You are a scriptwriter adapting a novel for audio.
-        Your task is to split the following text into granular segments (dialogue vs narration) and assign a speaker to each.
-        
-        Available Characters: {char_list_str}, Narrator.
-        
-        Rules:
-        1. Split the text into logical segments. Dialogue lines MUST be separate segments.
-        2. Assign "Narrator" to descriptive text.
-        3. Assign the correct Character Name to dialogue.
-        4. If you are unsure who is speaking, use "Narrator" or the most likely character based on context.
-        5. Return a JSON array of objects. Each object must have:
-           - "text": The exact text segment.
-           - "speaker": The name of the speaker (must match one of the available characters or "Narrator").
-        
-        Example Output:
-        [
-            {{"text": "The door creaked open.", "speaker": "Narrator"}},
-            {{"text": "Who's there?", "speaker": "John"}},
-            {{"text": "It's only me.", "speaker": "Jane"}}
-        ]
-        
-        Text to process:
-        """
+        prompt = f"""You are adapting a novel for audiobook narration.
+Your task is to split the text into segments and assign a speaker to each segment.
+
+IMPORTANT: Keep segments LONG and natural. Each segment should be:
+- A complete paragraph of narration (for Narrator)
+- A complete line of dialogue with its dialogue tag (for characters)
+- Never split mid-sentence or mid-thought
+
+Available speakers: {char_list_str}, Narrator.
+
+Rules:
+1. Narrator speaks all descriptive text, action, and narration.
+2. Character names speak their dialogue (text inside quotation marks).
+3. Keep dialogue with its surrounding description if short (e.g., "said Harry quietly")
+4. Aim for segments of 50-500 words each. NEVER create segments shorter than 20 words.
+5. Preserve the natural flow and rhythm of the prose.
+
+Return a JSON array:
+[
+    {{"text": "Long paragraph of narration here...", "speaker": "Narrator"}},
+    {{"text": "Character's complete dialogue with tag.", "speaker": "CharacterName"}}
+]
+
+Text to process:
+"""
         
         # We process in chunks to avoid hitting output token limits, but for V1 let's try a reasonable chunk.
         # Ideally we should loop, but let's assume the chapter text passed here is manageable or we handle it upstream.

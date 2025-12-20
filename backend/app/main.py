@@ -59,10 +59,11 @@ def get_llm_service() -> BaseLLM:
     return container.llm_service
 
 # Register Routers
-from .routers import books, generation, characters
+from .routers import books, generation, characters, settings as settings_router
 app.include_router(books.router)
 app.include_router(generation.router)
 app.include_router(characters.router)
+app.include_router(settings_router.router)
 
 # Mount static files for serving covers and audio
 app.mount("/data", StaticFiles(directory="data"), name="data")
@@ -73,5 +74,11 @@ def read_root():
 
 @app.get("/voices")
 async def get_voices(tts: BaseTTS = Depends(get_tts_service)):
-    voices = await tts.list_voices()
-    return {"count": len(voices), "voices": voices}
+    try:
+        voices = await tts.list_voices()
+        return {"count": len(voices), "voices": voices}
+    except Exception as e:
+        print(f"ERROR in /voices: {e}")
+        import traceback
+        traceback.print_exc()
+        raise

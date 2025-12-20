@@ -112,15 +112,20 @@ class Orchestrator:
             if not book:
                 raise ValueError("Book not found")
             
-            chapter = session.exec(select(Chapter).where(Chapter.book_id == book_id).order_by(Chapter.position)).first()
+            # Get first 3 chapters for better character detection
+            chapters = session.exec(
+                select(Chapter).where(Chapter.book_id == book_id).order_by(Chapter.position).limit(3)
+            ).all()
             
-            if not chapter:
+            if not chapters:
                 print("No chapters found to analyze.")
                 return
 
-            print(f"Analyzing book {book_id} using chapter: {chapter.title}")
+            # Combine text from multiple chapters for better character coverage
+            combined_text = "\n\n---\n\n".join([ch.content_text for ch in chapters])
+            print(f"Analyzing book {book_id} using {len(chapters)} chapters, total {len(combined_text)} chars")
             
-            analysis = await llm_service.analyze_text(chapter.content_text)
+            analysis = await llm_service.analyze_text(combined_text)
             
             characters_data = analysis.get("characters", [])
             
