@@ -2,6 +2,8 @@ import edge_tts
 import asyncio
 import subprocess
 import sys
+import tempfile
+import os
 from typing import List, Dict
 from .base import BaseTTS
 
@@ -25,19 +27,53 @@ class EdgeTTSAdapter(BaseTTS):
         print(f"[TTS DEBUG]   Text preview: {text[:100]}...")
         print(f"[TTS DEBUG]   Output: {output_path}")
         
-        # Use subprocess to call edge-tts CLI to avoid Windows asyncio issues
+        # Use the edge_tts Python library directly (more reliable than subprocess)
         try:
-            result = subprocess.run(
-                [
-                    sys.executable, "-m", "edge_tts",
-                    "--text", text,
-                    "--voice", voice_id,
-                    "--write-media", output_path
-                ],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
+            communicate = edge_tts.Communicate(text, voice_id)
+            await communicate.save(output_path)
+            print(f"[TTS DEBUG] Audio saved to {output_path}")
+            return output_path
+        except Exception as e:
+            print(f"[TTS ERROR] edge_tts library failed: {e}, trying subprocess fallback")
+        
+        # Fallback to subprocess with temp file for long texts
+        try:
+            # For long texts, write to a temp file to avoid command-line length limits
+            if len(text) > 1000:
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
+                    f.write(text)
+                    temp_file = f.name
+                
+                try:
+                    result = subprocess.run(
+                        [
+                            sys.executable, "-m", "edge_tts",
+                            "--file", temp_file,
+                            "--voice", voice_id,
+                            "--write-media", output_path
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=120
+                    )
+                finally:
+                    # Clean up temp file
+                    try:
+                        os.unlink(temp_file)
+                    except:
+                        pass
+            else:
+                result = subprocess.run(
+                    [
+                        sys.executable, "-m", "edge_tts",
+                        "--text", text,
+                        "--voice", voice_id,
+                        "--write-media", output_path
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
             
             if result.returncode != 0:
                 print(f"[TTS ERROR] edge-tts failed: {result.stderr}")

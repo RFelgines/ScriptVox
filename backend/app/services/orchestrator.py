@@ -316,6 +316,8 @@ class Orchestrator:
         chapter_audio_dir = f"data/audio/book_{book_id}/chapter_{chapter_position}"
         os.makedirs(chapter_audio_dir, exist_ok=True)
         
+        successful_segments = 0
+        
         for i, segment_data in enumerate(segments_data):
             # Use French voice by default
             voice_id = "fr-FR-DeniseNeural"  # Female French voice
@@ -359,6 +361,13 @@ class Orchestrator:
                 # This is the long-running task. No DB connection is held here.
                 await tts_service.generate_audio(segment_data["text"], voice_id, output_path)
                 
+                # Verify the file was actually created
+                if not os.path.exists(output_path):
+                    print(f"[ERROR] Audio file was not created: {output_path}")
+                    continue
+                
+                successful_segments += 1
+                
                 # Update DB with result in a NEW short-lived session
                 with Session(engine) as update_session:
                     segment = update_session.get(Segment, segment_data["id"])
@@ -378,15 +387,23 @@ class Orchestrator:
                 
             except Exception as e:
                 print(f"Error generating audio for segment {segment_data['id']}: {e}")
+                import traceback
+                traceback.print_exc()
         
-        # Final update for chapter status
+        # Final update for chapter status - only mark COMPLETED if we have audio files
         with Session(engine) as final_session:
             chapter = final_session.get(Chapter, chapter_id)
             if chapter:
-                chapter.status = ChapterStatus.COMPLETED
-                chapter.progress = 100
-                chapter.audio_path = chapter_audio_dir
+                if successful_segments > 0:
+                    chapter.status = ChapterStatus.COMPLETED
+                    chapter.progress = 100
+                    chapter.audio_path = chapter_audio_dir
+                    print(f"Audio generation complete for chapter {chapter_id}. Generated {successful_segments}/{len(segments_data)} segments.")
+                else:
+                    chapter.status = ChapterStatus.FAILED
+                    chapter.progress = 0
+                    chapter.audio_path = None
+                    print(f"Audio generation FAILED for chapter {chapter_id}. No segments were generated.")
+                
                 final_session.add(chapter)
                 final_session.commit()
-        
-        print(f"Audio generation complete for chapter {chapter_id}.")
